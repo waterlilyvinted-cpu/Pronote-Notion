@@ -1,30 +1,39 @@
 import os
 import datetime
 import pronotepy
-from pronotepy.ent import *
 from notion_client import Client
 
-# 1. Récupération des secrets GitHub
+# Récupération des secrets
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
 NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID")
-PRONOTE_URL = os.environ.get("PRONOTE_URL")
-PRONOTE_USERNAME = os.environ.get("PRONOTE_USERNAME")
-PRONOTE_PASSWORD = os.environ.get("PRONOTE_PASSWORD")
+PRONOTE_URL = os.environ.get("PRONOTE_URL", "").strip()
+PRONOTE_USERNAME = os.environ.get("PRONOTE_USERNAME", "").strip()
+PRONOTE_PASSWORD = os.environ.get("PRONOTE_PASSWORD", "").strip()
 
 def sync():
-    # Initialisation du client Notion
     notion = Client(auth=NOTION_TOKEN)
     
-    print("Connexion à Pronote...")
-    # Connexion à Pronote (connexion directe sans ENT)
-    client = pronotepy.Client(PRONOTE_URL, username=PRONOTE_USERNAME, password=PRONOTE_PASSWORD)
+    # Nettoyage automatique de l'URL si besoin
+    url = PRONOTE_URL
+    if not url.endswith("/"):
+        url += "/"
+    if url.endswith("eleve.html/"):
+        url = url.replace("eleve.html/", "")
+
+    print(f"Connexion à Pronote sur : {url}")
     
+    try:
+        # Connexion directe à l'élève
+        client = pronotepy.Client(url + "eleve.html", username=PRONOTE_USERNAME, password=PRONOTE_PASSWORD)
+    except Exception as e:
+        print(f"Échec de connexion directe, tentative avec l'URL de base : {e}")
+        client = pronotepy.Client(url, username=PRONOTE_USERNAME, password=PRONOTE_PASSWORD)
+
     if not client.logged_in:
-        print("Échec de la connexion à Pronote.")
+        print("Erreur : Impossible de se connecter à Pronote. Vérifiez vos identifiants.")
         return
 
     print("Connexion réussie ! Récupération des devoirs...")
-    # Récupération des devoirs à partir d'aujourd'hui
     today = datetime.date.today()
     homeworks = client.homework(today)
 
@@ -33,9 +42,8 @@ def sync():
         description = hw.description
         due_date = hw.date.strftime("%Y-%m-%d")
 
-        print(f"Ajout du devoir : {subject} pour le {due_date}")
+        print(f"Ajout : {subject} pour le {due_date}")
 
-        # Envoi de chaque devoir dans la base de données Notion
         notion.pages.create(
             parent={"database_id": NOTION_DATABASE_ID},
             properties={
