@@ -3,7 +3,7 @@ import datetime
 import pronotepy
 from notion_client import Client
 
-# Récupération des secrets
+# Récupération des secrets GitHub
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
 NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID")
 PRONOTE_URL = os.environ.get("PRONOTE_URL", "").strip()
@@ -13,24 +13,18 @@ PRONOTE_PASSWORD = os.environ.get("PRONOTE_PASSWORD", "").strip()
 def sync():
     notion = Client(auth=NOTION_TOKEN)
     
-    # Nettoyage automatique de l'URL si besoin
+    # S'assurer que l'URL se termine bien par un slash /
     url = PRONOTE_URL
     if not url.endswith("/"):
         url += "/"
-    if url.endswith("eleve.html/"):
-        url = url.replace("eleve.html/", "")
 
     print(f"Connexion à Pronote sur : {url}")
     
-    try:
-        # Connexion directe à l'élève
-        client = pronotepy.Client(url + "eleve.html", username=PRONOTE_USERNAME, password=PRONOTE_PASSWORD)
-    except Exception as e:
-        print(f"Échec de connexion directe, tentative avec l'URL de base : {e}")
-        client = pronotepy.Client(url, username=PRONOTE_USERNAME, password=PRONOTE_PASSWORD)
+    # Connexion directe Pronote (sans ENT)
+    client = pronotepy.Client(url + "eleve.html", username=PRONOTE_USERNAME, password=PRONOTE_PASSWORD)
 
     if not client.logged_in:
-        print("Erreur : Impossible de se connecter à Pronote. Vérifiez vos identifiants.")
+        print("Erreur : Connexion impossible. Vérifiez identifiant et mot de passe.")
         return
 
     print("Connexion réussie ! Récupération des devoirs...")
